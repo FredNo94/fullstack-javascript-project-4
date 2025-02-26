@@ -21,3 +21,6 @@ sudo npm link
 ### Asciinema with an example of download page and show information about util
 https://asciinema.org/a/KJDkWT1S3vww04jDLPe5ah0ts
 ---
+### Asciinema with an example of download page and show information about util in step 2
+https://asciinema.org/a/DsV3g3Mk3tVfeA9np4b4kIRdm
+---
