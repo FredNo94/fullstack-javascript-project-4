@@ -3,7 +3,7 @@ import fsp from 'fs/promises';
 import nock from 'nock';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import generateFilePath from '../src/generatePath.js';
+import generateFilePath from '../src/utils/generatePath.js';
 import downloadPage from '../src/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -56,13 +56,28 @@ describe('Check downloadPage', () => {
     const html = await fsp.readFile(path.join(fixturesPath, 'courses.html'), 'utf-8');
     const expectedHtml = await fsp.readFile(path.join(fixturesPath, 'expectedHtml.html'), 'utf-8');
     const expectImg = await fsp.readFile(path.join(fixturesPath, '/assets/professions/nodejs.png'));
+    const expectCSS = await fsp.readFile(path.join(fixturesPath, '/assets/professions/expectedCSS.css'));
+    const expectJS = await fsp.readFile(path.join(fixturesPath, '/assets/professions/expectedJS.js'));
 
     nock('https://ru.hexlet.io')
+      .persist() // Запросы можно делать несколько раз
       .get('/courses')
       .reply(200, html);
+
     nock('https://ru.hexlet.io')
+      .persist()
       .get('/assets/professions/nodejs.png')
       .reply(200, expectImg);
+
+    nock('https://ru.hexlet.io')
+      .persist()
+      .get('/assets/application.css')
+      .reply(200, expectCSS);
+
+    nock('https://ru.hexlet.io')
+      .persist()
+      .get('/packs/js/runtime.js')
+      .reply(200, expectJS);
 
     await downloadPage(url, outputDir);
 
@@ -72,6 +87,14 @@ describe('Check downloadPage', () => {
     const imagePath = path.join(expectedDir, 'ru-hexlet-io-assets-professions-nodejs.png');
     const downloadedImg = await fsp.readFile(imagePath);
     expect(downloadedImg).toEqual(expectImg);
+
+    const cssPath = path.join(expectedDir, 'ru-hexlet-io-assets-application.css');
+    const downloadedCSS = await fsp.readFile(cssPath);
+    expect(downloadedCSS).toEqual(expectCSS);
+
+    const jsPath = path.join(expectedDir, 'ru-hexlet-io-packs-js-runtime.js');
+    const downloadedJS = await fsp.readFile(jsPath);
+    expect(downloadedJS).toEqual(expectJS);
   });
 });
 
@@ -106,3 +129,5 @@ describe('Check generateFilePath', () => {
     expect(filePath).toBe(expectedFilePath);
   });
 });
+
+afterAll(() => fsp.rm(outputDir, { recursive: true, force: true }));
