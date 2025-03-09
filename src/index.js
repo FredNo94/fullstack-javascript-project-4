@@ -4,8 +4,12 @@ import * as cheerio from 'cheerio';
 import path from 'path';
 import generatePath from './utils/generatePath.js';
 import extractLocalResources from './utils/extractLocalResources.js';
+import debug from 'debug';
+
+const log = debug('page-loader');
 
 function downloadPage(url, outputDir = '/home/user/current-dir') {
+  log(`Run load for URL: ${url}`);
   const baseUrl = new URL(url).origin;
   const newOutputDir = generatePath(url, outputDir, 'dir');
   const outputFilePath = generatePath(url, newOutputDir, 'html');
@@ -13,6 +17,7 @@ function downloadPage(url, outputDir = '/home/user/current-dir') {
 
   return axios.get(url, { responseType: 'arraybuffer' })
     .then((response) => {
+      log('HTML-page loaded');
       html = response.data;
       return fsp.mkdir(newOutputDir, { recursive: true });
     })
@@ -29,16 +34,20 @@ function downloadPage(url, outputDir = '/home/user/current-dir') {
       return convertedResources;
     })
     .then((convertedResources) => {
-      const downloadPromises = convertedResources.map((res) => axios.get(res.absolutPathInHTML, { responseType: 'arraybuffer' })
-        .then((response) => fsp.writeFile(res.filePathForSave, response.data)));
+      const downloadPromises = convertedResources.map((res) =>
+        axios.get(res.absolutPathInHTML, { responseType: 'arraybuffer' })
+          .then((response) => {
+            log(`Saving a resource: ${res.filePathForSave}`);
+            return fsp.writeFile(res.filePathForSave, response.data);
+          })
+      );
 
       return Promise.all(downloadPromises).then(() => convertedResources);
     })
     .then((convertedResources) => {
+      log('Updating HTML...');
       const $ = cheerio.load(html);
-      convertedResources.forEach(({
-        tag, attr, srcBase, filePathForSave,
-      }) => {
+      convertedResources.forEach(({ tag, attr, srcBase, filePathForSave }) => {
         $(tag).each((_, el) => {
           if ($(el).attr(attr) === srcBase) {
             $(el).attr(attr, path.relative(outputDir, filePathForSave));
@@ -50,9 +59,11 @@ function downloadPage(url, outputDir = '/home/user/current-dir') {
       return fsp.writeFile(outputFilePath, updatedHtml);
     })
     .then(() => {
-      console.log(`Страница сохранена в: ${outputFilePath}`);
+      log(`Page was successfully downloaded into: '${outputFilePath}'`);
+      console.log(`Page was successfully downloaded into '${outputFilePath}'`);
     })
     .catch((error) => {
+      log(`Error: ${error.message}`);
       throw error;
     });
 }
