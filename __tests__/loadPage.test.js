@@ -3,6 +3,7 @@ import fsp from 'fs/promises';
 import nock from 'nock';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { jest } from '@jest/globals';
 import generateFilePath from '../src/utils/generatePath.js';
 import downloadPage from '../src/index.js';
 
@@ -12,14 +13,21 @@ const outputDir = path.join(__dirname, 'tmp');
 const fixturesPath = path.join(__dirname, '..', '__fixtures__');
 const expectedDir = path.join(outputDir, 'ru-hexlet-io-courses_files');
 
-describe('Check downloadPage', () => {
-  const url = 'https://ru.hexlet.io/courses';
-  const filePath = path.join(outputDir, 'ru-hexlet-io-courses_files', 'ru-hexlet-io-courses.html');
-  const htmlContent = '<html><body>Test</body></html>';
+const url = 'https://ru.hexlet.io/courses';
+const filePath = path.join(outputDir, 'ru-hexlet-io-courses_files', 'ru-hexlet-io-courses.html');
+const htmlContent = '<html><body>Test</body></html>';
 
+describe('Check downloadPage', () => {
   beforeEach(async () => {
     await fsp.rm(expectedDir, { recursive: true, force: true });
     await fsp.mkdir(expectedDir, { recursive: true });
+    jest.spyOn(process, 'exit').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(async () => {
+    await fsp.rm(outputDir, { recursive: true, force: true });
+    jest.restoreAllMocks();
   });
 
   test('Check download page and save in file', async () => {
@@ -33,12 +41,13 @@ describe('Check downloadPage', () => {
     expect(stats.isFile()).toBe(true);
   });
 
-  test('Check error when wrong url', async () => {
+  test('Check throw error when wrong url', async () => {
     nock('https://ru.hexlet.io')
       .get('/courses')
-      .replyWithError('Ошибка запроса');
+      .replyWithError('Network error');
 
-    await expect(downloadPage(url, outputDir)).rejects.toThrow('Ошибка запроса');
+    await expect(downloadPage('https://ru.hexlet.io/courses', outputDir))
+      .rejects.toThrow('Network error');
   });
 
   test('Check create new folder', async () => {
@@ -52,7 +61,7 @@ describe('Check downloadPage', () => {
     expect(stats.isDirectory()).toBe(true);
   });
 
-  test('Check download page and img', async () => {
+  test('Check download page and assets (img, css, js)', async () => {
     const html = await fsp.readFile(path.join(fixturesPath, 'courses.html'), 'utf-8');
     const expectedHtml = await fsp.readFile(path.join(fixturesPath, 'expectedHtml.html'), 'utf-8');
     const expectImg = await fsp.readFile(path.join(fixturesPath, '/assets/professions/nodejs.png'));
@@ -60,7 +69,7 @@ describe('Check downloadPage', () => {
     const expectJS = await fsp.readFile(path.join(fixturesPath, '/assets/professions/expectedJS.js'));
 
     nock('https://ru.hexlet.io')
-      .persist() // Запросы можно делать несколько раз
+      .persist()
       .get('/courses')
       .reply(200, html);
 
@@ -96,38 +105,45 @@ describe('Check downloadPage', () => {
     const downloadedJS = await fsp.readFile(jsPath);
     expect(downloadedJS).toEqual(expectJS);
   });
+
+  test('Check throw error on 404', async () => {
+    nock('https://ru.hexlet.io/')
+      .get('/coursesr')
+      .reply(404, 'Not Found');
+
+    await expect(downloadPage('https://ru.hexlet.io/coursesr', outputDir))
+      .rejects.toThrow('Network error: https://ru.hexlet.io/coursesr: Request failed with status code 404');
+  });
 });
 
 describe('Check generateFilePath', () => {
   const outputDirForCheckGen = path.join(__dirname, 'tmp', 'ru-hexlet-io-courses_files');
 
   test('Check generate filename for base url', () => {
-    const url = 'https://ru.hexlet.io/courses';
-    const filePath = generateFilePath(url, outputDirForCheckGen, 'html');
+    const urlOne = 'https://ru.hexlet.io/courses';
+    const filePathOne = generateFilePath(urlOne, outputDirForCheckGen, 'html');
     const expectedFilePath = path.join(outputDirForCheckGen, 'ru-hexlet-io-courses.html');
-    expect(filePath).toBe(expectedFilePath);
+    expect(filePathOne).toBe(expectedFilePath);
   });
 
   test('Check replace symbols on dash', () => {
-    const url = 'https://example.com/path?param=value#section';
-    const filePath = generateFilePath(url, outputDirForCheckGen, 'html');
+    const urlTwo = 'https://example.com/path?param=value#section';
+    const filePathTwo = generateFilePath(urlTwo, outputDirForCheckGen, 'html');
     const expectedFilePath = path.join(outputDirForCheckGen, 'example-com-path-param-value-section.html');
-    expect(filePath).toBe(expectedFilePath);
+    expect(filePathTwo).toBe(expectedFilePath);
   });
 
   test('Check work with special symbols in url', () => {
-    const url = 'https://example.com/some_path?query=test&value=123';
-    const filePath = generateFilePath(url, outputDirForCheckGen, 'html');
+    const urlThree = 'https://example.com/some_path?query=test&value=123';
+    const filePathThree = generateFilePath(urlThree, outputDirForCheckGen, 'html');
     const expectedFilePath = path.join(outputDirForCheckGen, 'example-com-some-path-query-test-value-123.html');
-    expect(filePath).toBe(expectedFilePath);
+    expect(filePathThree).toBe(expectedFilePath);
   });
 
   test('Check work without symbols in url', () => {
-    const url = 'https://test.com';
-    const filePath = generateFilePath(url, outputDirForCheckGen, 'html');
+    const urlFour = 'https://test.com';
+    const filePathFour = generateFilePath(urlFour, outputDirForCheckGen, 'html');
     const expectedFilePath = path.join(outputDirForCheckGen, 'test-com.html');
-    expect(filePath).toBe(expectedFilePath);
+    expect(filePathFour).toBe(expectedFilePath);
   });
 });
-
-afterAll(() => fsp.rm(outputDir, { recursive: true, force: true }));

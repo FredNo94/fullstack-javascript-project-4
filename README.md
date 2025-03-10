@@ -27,3 +27,6 @@ https://asciinema.org/a/DsV3g3Mk3tVfeA9np4b4kIRdm
 ### Asciinema with an example of download page and show information about util in step 4
 https://asciinema.org/a/5r9BWga4BrlVV4RRiT5oqlnCI
 ---
+### Asciinema with an example of download page in step 5
+https://asciinema.org/a/2cYMSYOXLaeCoIyVctrLRwR8f
+---

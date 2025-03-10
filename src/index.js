@@ -8,7 +8,7 @@ import extractLocalResources from './utils/extractLocalResources.js';
 
 const log = debug('page-loader');
 
-function downloadPage(url, outputDir = '/home/user/current-dir') {
+function downloadPage(url, outputDir = process.cwd()) {
   log(`Run load for URL: ${url}`);
   const baseUrl = new URL(url).origin;
   const newOutputDir = generatePath(url, outputDir, 'dir');
@@ -18,6 +18,9 @@ function downloadPage(url, outputDir = '/home/user/current-dir') {
   return axios.get(url, { responseType: 'arraybuffer' })
     .then((response) => {
       log('HTML-page loaded');
+      if (response.status !== 200) {
+        throw new Error(`Network error: ${url}: ${response.status} ${response.statusText}`);
+      }
       html = response.data;
       return fsp.mkdir(newOutputDir, { recursive: true });
     })
@@ -59,12 +62,20 @@ function downloadPage(url, outputDir = '/home/user/current-dir') {
       return fsp.writeFile(outputFilePath, updatedHtml);
     })
     .then(() => {
-      log(`Page was successfully downloaded into: '${outputFilePath}'`);
-      console.log(`Page was successfully downloaded into '${outputFilePath}'`);
+      log(`Page was successfully downloaded into: '${newOutputDir}'`);
+      console.log(`Page was successfully downloaded into '${newOutputDir}'`);
     })
     .catch((error) => {
-      log(`Error: ${error.message}`);
-      throw error;
+      if (error.response || error.request) {
+        log(`Network error: ${error.message}`);
+        throw new Error(`Network error: ${url}: ${error.message}`);
+      } else if (error.code === 'EACCES' || error.code === 'ENOENT') {
+        log(`File system error: ${error.message}`);
+        throw new Error(`File system error: ${error.message}`);
+      } else {
+        log(`Unexpected error: ${error.message}`);
+        throw new Error(`Unexpected error: ${error.message}`);
+      }
     });
 }
 
