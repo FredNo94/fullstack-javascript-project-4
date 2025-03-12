@@ -3,6 +3,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import path from 'path';
 import debug from 'debug';
+import Listr from 'listr';
 import generatePath from './utils/generatePath.js';
 import extractLocalResources from './utils/extractLocalResources.js';
 
@@ -25,28 +26,37 @@ function downloadPage(url, outputDir = process.cwd()) {
       return fsp.mkdir(newOutputDir, { recursive: true });
     })
     .then(() => {
+      log(`Directory created: ${newOutputDir}`);
       const $ = cheerio.load(html);
       const resources = extractLocalResources($, baseUrl);
 
       const convertedResources = resources.map((res) => {
         const ext = path.extname(res.srcBase).slice(1);
         const filePathForSave = generatePath(res.absolutPathInHTML, newOutputDir, ext);
+        log(`Resource found: ${res.absolutPathInHTML}, saving to: ${filePathForSave}`);
         return { ...res, filePathForSave };
       });
 
       return convertedResources;
     })
     .then((convertedResources) => {
-      const downloadPromises = convertedResources.map((res) => axios.get(res.absolutPathInHTML, { responseType: 'arraybuffer' })
-        .then((response) => {
-          log(`Saving a resource: ${res.filePathForSave}`);
-          return fsp.writeFile(res.filePathForSave, response.data);
-        }));
+      log(`Downloading ${convertedResources.length} resources...`);
+      const tasks = new Listr(
+        convertedResources.map((res) => ({
+          title: `${res.absolutPathInHTML}`,
+          task: () => axios.get(res.absolutPathInHTML, { responseType: 'arraybuffer' })
+            .then((response) => {
+              log(`Saving resource: ${res.filePathForSave}`);
+              return fsp.writeFile(res.filePathForSave, response.data);
+            }),
+        })),
+        { concurrent: true, exitOnError: false },
+      );
 
-      return Promise.all(downloadPromises).then(() => convertedResources);
+      return tasks.run().then(() => convertedResources);
     })
     .then((convertedResources) => {
-      log('Updating HTML...');
+      log('Updating HTML with local resource paths...');
       const $ = cheerio.load(html);
       convertedResources.forEach(({
         tag, attr, srcBase, filePathForSave,
