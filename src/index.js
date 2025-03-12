@@ -23,7 +23,11 @@ function downloadPage(url, outputDir = process.cwd()) {
         throw new Error(`Network error: ${url}: ${response.status} ${response.statusText}`);
       }
       html = response.data;
-      return fsp.mkdir(newOutputDir, { recursive: true });
+      return fsp.mkdir(newOutputDir, { recursive: true })
+        .catch((error) => {
+          log(`File system error: ${error.message}`);
+          throw new Error(`File system error: ${error.message}`);
+        });
     })
     .then(() => {
       log(`Directory created: ${newOutputDir}`);
