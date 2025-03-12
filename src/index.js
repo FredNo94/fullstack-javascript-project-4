@@ -24,9 +24,10 @@ function downloadPage(url, outputDir = process.cwd()) {
       }
       html = response.data;
       return fsp.mkdir(newOutputDir, { recursive: true })
+        .then(() => fsp.access(newOutputDir))
         .catch((error) => {
           log(`File system error: ${error.message}`);
-          throw new Error(`File system error: ${error.message}`);
+          return Promise.reject(new Error(`File system error: ${error.message}`));
         });
     })
     .then(() => {
