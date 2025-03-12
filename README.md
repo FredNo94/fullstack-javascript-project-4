@@ -30,6 +30,8 @@ https://asciinema.org/a/5r9BWga4BrlVV4RRiT5oqlnCI
 ### Asciinema with an example of download page in step 5
 https://asciinema.org/a/2cYMSYOXLaeCoIyVctrLRwR8f
 ---
-### Asciinema with install and  work app
+### Asciinema with install and work app
 https://asciinema.org/a/pew6vi80VTCnFpkmkb8OkiV9s
 ---
+
+
