@@ -12,13 +12,16 @@ function cliLoadPage() {
       downloadPage(url, dir.output)
         .then((outputDir) => {
           console.log(`Page was successfully downloaded into '${outputDir}'`);
+          process.exit(0);
         })
         .catch((error) => {
+          console.error('Error occurred:', error.message);
+  
           if (error.response || error.request) {
             console.error(`Network error: ${url}: ${error.message}`);
             process.exit(1);
           } else if (error.code === 'EACCES' || error.code === 'ENOENT') {
-            console.error(`File system error:  ${error.message}`);
+            console.error(`File system error: ${error.message}`);
             process.exit(2);
           } else {
             console.error(`Unexpected error: ${error.message}`);

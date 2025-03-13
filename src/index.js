@@ -10,53 +10,37 @@ import extractLocalResources from './utils/extractLocalResources.js';
 const log = debug('page-loader');
 
 function downloadPage(url, outputDir = process.cwd()) {
-  log(`Run load for URL: ${url}`);
+  log(`Starting download for URL: ${url}`);
   const baseUrl = new URL(url).origin;
   const newOutputDir = generatePath(url, outputDir, 'dir');
   const outputFilePath = generatePath(url, newOutputDir, 'html');
-  let html;
 
   return axios.get(url, { responseType: 'arraybuffer' })
     .then((response) => {
       log('HTML-page loaded');
-      if (response.status >= 400) {
-        throw new Error(`Network error: ${url}: ${response.status} ${response.statusText}`);
-      }
-      html = response.data;
+      const html = response.data;
       return fsp.mkdir(newOutputDir, { recursive: true })
-        .then(() => fsp.access(newOutputDir))
-        .catch((error) => {
-          log(`File system error: ${error.message}`);
-          throw new Error(`File system error: ${error.message}`);
-        });
+        .then(() => ({ html, newOutputDir }));
     })
-    .then(() => {
+    .then(({ html, newOutputDir }) => {
       log(`Directory created: ${newOutputDir}`);
       const $ = cheerio.load(html);
       const resources = extractLocalResources($, baseUrl);
 
-      const convertedResources = resources.map((res) => {
-        const ext = path.extname(res.srcBase).slice(1) || 'html';
-        const filePathForSave = generatePath(res.absolutPathInHTML, newOutputDir, ext);
-        log(`Resource found: ${res.absolutPathInHTML}, saving to: ${filePathForSave}`);
-        return { ...res, filePathForSave };
-      });
+      const convertedResources = resources.map((res) => ({
+        ...res,
+        filePathForSave: generatePath(res.absolutPathInHTML, newOutputDir, path.extname(res.srcBase).slice(1) || 'html'),
+      }));
 
-      return convertedResources;
+      return { $, html, convertedResources, newOutputDir };
     })
-    .then((convertedResources) => {
+    .then(({ $, html, convertedResources, newOutputDir }) => {
       log(`Downloading ${convertedResources.length} resources...`);
       const tasks = new Listr(
         convertedResources.map((res) => ({
-          title: `${res.absolutPathInHTML}`,
+          title: res.absolutPathInHTML,
           task: () => axios.get(res.absolutPathInHTML, { responseType: 'arraybuffer' })
-            .then((response) => {
-              if (response.status >= 400) {
-                throw new Error(`Failed to download resource: ${res.absolutPathInHTML}: ${response.status}`);
-              }
-              log(`Saving resource: ${res.filePathForSave}`);
-              return fsp.writeFile(res.filePathForSave, response.data);
-            })
+            .then((response) => fsp.writeFile(res.filePathForSave, response.data))
             .catch((error) => {
               log(`Error downloading resource: ${res.absolutPathInHTML}: ${error.message}`);
               throw error;
@@ -65,28 +49,20 @@ function downloadPage(url, outputDir = process.cwd()) {
         { concurrent: true, exitOnError: false },
       );
 
-      return tasks.run().then(() => convertedResources);
+      return tasks.run().then(() => ({ $, convertedResources, newOutputDir }));
     })
-    .then((convertedResources) => {
+    .then(({ $, convertedResources, newOutputDir }) => {
       log('Updating HTML with local resource paths...');
-      const $ = cheerio.load(html);
-      convertedResources.forEach(({
-        tag, attr, srcBase, filePathForSave,
-      }) => {
+      convertedResources.forEach(({ tag, attr, srcBase, filePathForSave }) => {
         $(tag).each((_, el) => {
           if ($(el).attr(attr) === srcBase) {
-            const relativePath = path.relative(outputDir, filePathForSave);
-            $(el).attr(attr, relativePath);
+            const correctRelativePath = path.join(path.basename(newOutputDir), path.basename(filePathForSave));
+            $(el).attr(attr, correctRelativePath);
           }
         });
-      });
+      });      
 
-      const updatedHtml = $.html({ decodeEntities: false });
-      return fsp.writeFile(outputFilePath, updatedHtml);
-    })
-    .then(() => {
-      log(`Page was successfully downloaded into: '${newOutputDir}'`);
-      return newOutputDir;
+      return fsp.writeFile(outputFilePath, $.html({ decodeEntities: false })).then(() => newOutputDir);
     })
     .catch((error) => {
       log(`Error: ${error.message}`);
