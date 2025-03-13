@@ -19,7 +19,7 @@ function downloadPage(url, outputDir = process.cwd()) {
   return axios.get(url, { responseType: 'arraybuffer' })
     .then((response) => {
       log('HTML-page loaded');
-      if (response.status !== 200) {
+      if (response.status >= 400) {
         throw new Error(`Network error: ${url}: ${response.status} ${response.statusText}`);
       }
       html = response.data;
@@ -27,7 +27,7 @@ function downloadPage(url, outputDir = process.cwd()) {
         .then(() => fsp.access(newOutputDir))
         .catch((error) => {
           log(`File system error: ${error.message}`);
-          return Promise.reject(new Error(`File system error: ${error.message}`));
+          throw new Error(`File system error: ${error.message}`);
         });
     })
     .then(() => {
@@ -36,7 +36,7 @@ function downloadPage(url, outputDir = process.cwd()) {
       const resources = extractLocalResources($, baseUrl);
 
       const convertedResources = resources.map((res) => {
-        const ext = path.extname(res.srcBase).slice(1);
+        const ext = path.extname(res.srcBase).slice(1) || 'html';
         const filePathForSave = generatePath(res.absolutPathInHTML, newOutputDir, ext);
         log(`Resource found: ${res.absolutPathInHTML}, saving to: ${filePathForSave}`);
         return { ...res, filePathForSave };
@@ -51,8 +51,15 @@ function downloadPage(url, outputDir = process.cwd()) {
           title: `${res.absolutPathInHTML}`,
           task: () => axios.get(res.absolutPathInHTML, { responseType: 'arraybuffer' })
             .then((response) => {
+              if (response.status >= 400) {
+                throw new Error(`Failed to download resource: ${res.absolutPathInHTML}: ${response.status}`);
+              }
               log(`Saving resource: ${res.filePathForSave}`);
               return fsp.writeFile(res.filePathForSave, response.data);
+            })
+            .catch((error) => {
+              log(`Error downloading resource: ${res.absolutPathInHTML}: ${error.message}`);
+              throw error;
             }),
         })),
         { concurrent: true, exitOnError: false },
@@ -68,7 +75,8 @@ function downloadPage(url, outputDir = process.cwd()) {
       }) => {
         $(tag).each((_, el) => {
           if ($(el).attr(attr) === srcBase) {
-            $(el).attr(attr, path.relative(outputDir, filePathForSave));
+            const relativePath = path.relative(outputDir, filePathForSave);
+            $(el).attr(attr, relativePath);
           }
         });
       });
@@ -78,9 +86,10 @@ function downloadPage(url, outputDir = process.cwd()) {
     })
     .then(() => {
       log(`Page was successfully downloaded into: '${newOutputDir}'`);
-      console.log(`Page was successfully downloaded into '${newOutputDir}'`);
+      return newOutputDir;
     })
     .catch((error) => {
+      log(`Error: ${error.message}`);
       if (error.response || error.request) {
         log(`Network error: ${error.message}`);
         throw new Error(`Network error: ${url}: ${error.message}`);
