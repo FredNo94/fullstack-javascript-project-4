@@ -16,14 +16,24 @@ function downloadPage(url, outputDir = process.cwd()) {
   const outputFilePath = generatePath(url, newOutputDir, 'html');
   let html;
 
-  return axios.get(url, { responseType: 'arraybuffer' })
+  return fsp.access(outputDir)
+    .catch(() => {
+      log(`Output directory does not exist: ${outputDir}`);
+      throw new Error(`Output directory does not exist: ${outputDir}`);
+    })
+    .then(() => axios.get(url, { responseType: 'arraybuffer' }))
     .then((response) => {
       log('HTML-page loaded');
       if (response.status >= 400) {
         throw new Error(`Network error: ${url}: ${response.status} ${response.statusText}`);
       }
       html = response.data;
-      return fsp.mkdir(newOutputDir, { recursive: true });
+      return fsp.mkdir(newOutputDir, { recursive: true })
+        .then(() => fsp.access(newOutputDir))
+        .catch((error) => {
+          log(`File system error: ${error.message}`);
+          throw new Error(`File system error: ${error.message}`);
+        });
     })
     .then(() => {
       log(`Directory created: ${newOutputDir}`);
