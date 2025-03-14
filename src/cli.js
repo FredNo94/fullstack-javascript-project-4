@@ -1,4 +1,5 @@
 import { program } from 'commander';
+import fsp from 'fs/promises';
 import downloadPage from './index.js';
 
 function cliLoadPage() {
@@ -9,7 +10,8 @@ function cliLoadPage() {
     .argument('<url>', 'URL страницы')
     .option('-o --output [dir]', 'Output dir ', process.cwd())
     .action((url, dir) => {
-      downloadPage(url, dir.output)
+      fsp.access(dir.output)
+        .then(() => downloadPage(url, dir.output))
         .then((outputDir) => {
           console.log(`Page was successfully downloaded into '${outputDir}'`);
           process.exit(0);
