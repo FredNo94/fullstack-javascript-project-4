@@ -3,7 +3,9 @@ import fsp from 'fs/promises';
 import nock from 'nock';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { beforeAll, jest } from '@jest/globals';
+import {
+  beforeAll, jest, describe, test, expect, beforeEach, afterAll,
+} from '@jest/globals';
 import generateFilePath from '../src/utils/generatePath.js';
 import downloadPage from '../src/index.js';
 
