@@ -19,7 +19,6 @@ const htmlContent = '<html><body>Test</body></html>';
 
 describe('Check downloadPage', () => {
   beforeEach(async () => {
-    await fsp.rm(expectedDir, { recursive: true, force: true });
     await fsp.mkdir(expectedDir, { recursive: true });
     jest.spyOn(process, 'exit').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
