@@ -16,7 +16,7 @@ function cliLoadPage() {
         })
         .catch((error) => {
           console.error('Error occurred:', error.message);
-  
+
           if (error.response || error.request) {
             console.error(`Network error: ${url}: ${error.message}`);
             process.exit(1);

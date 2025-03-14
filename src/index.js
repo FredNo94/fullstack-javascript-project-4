@@ -22,7 +22,7 @@ function downloadPage(url, outputDir = process.cwd()) {
       return fsp.mkdir(newOutputDir, { recursive: true })
         .then(() => ({ html, newOutputDir }));
     })
-    .then(({ html, newOutputDir }) => {
+    .then(({ html }) => {
       log(`Directory created: ${newOutputDir}`);
       const $ = cheerio.load(html);
       const resources = extractLocalResources($, baseUrl);
@@ -32,9 +32,9 @@ function downloadPage(url, outputDir = process.cwd()) {
         filePathForSave: generatePath(res.absolutPathInHTML, newOutputDir, path.extname(res.srcBase).slice(1) || 'html'),
       }));
 
-      return { $, html, convertedResources, newOutputDir };
+      return { $, html, convertedResources };
     })
-    .then(({ $, html, convertedResources, newOutputDir }) => {
+    .then(({ $, convertedResources }) => {
       log(`Downloading ${convertedResources.length} resources...`);
       const tasks = new Listr(
         convertedResources.map((res) => ({
@@ -49,20 +49,26 @@ function downloadPage(url, outputDir = process.cwd()) {
         { concurrent: true, exitOnError: false },
       );
 
-      return tasks.run().then(() => ({ $, convertedResources, newOutputDir }));
+      return tasks.run().then(() => ({ $, convertedResources }));
     })
-    .then(({ $, convertedResources, newOutputDir }) => {
+    .then(({ $, convertedResources }) => {
       log('Updating HTML with local resource paths...');
-      convertedResources.forEach(({ tag, attr, srcBase, filePathForSave }) => {
+      convertedResources.forEach(({
+        tag, attr, srcBase, filePathForSave,
+      }) => {
         $(tag).each((_, el) => {
           if ($(el).attr(attr) === srcBase) {
-            const correctRelativePath = path.join(path.basename(newOutputDir), path.basename(filePathForSave));
+            const correctRelativePath = path.join(
+              path.basename(newOutputDir),
+              path.basename(filePathForSave),
+            );
             $(el).attr(attr, correctRelativePath);
           }
         });
-      });      
+      });
 
-      return fsp.writeFile(outputFilePath, $.html({ decodeEntities: false })).then(() => newOutputDir);
+      return fsp.writeFile(outputFilePath, $.html({ decodeEntities: false }))
+        .then(() => newOutputDir);
     })
     .catch((error) => {
       log(`Error: ${error.message}`);
