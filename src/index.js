@@ -87,6 +87,9 @@ function downloadPage(url, outputDir = process.cwd()) {
       });
 
       const updatedHtml = $.html({ decodeEntities: false });
+      console.log('Saving HTML to:', outputFilePath);
+      console.log('Output directory:', newOutputDir);
+
       return fsp.writeFile(outputFilePath, updatedHtml);
     })
     .then(() => {

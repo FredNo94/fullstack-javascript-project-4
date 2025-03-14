@@ -9,9 +9,9 @@ function cliLoadPage() {
     .version('1.0.0')
     .argument('<url>', 'URL страницы')
     .option('-o --output [dir]', 'Output dir ', process.cwd())
-    .action((url, dir) => {
+    .action((url, { output }) => {
       fsp.access(dir.output)
-        .then(() => downloadPage(url, dir.output))
+        .then(() => downloadPage(url, output))
         .then((outputDir) => {
           console.log(`Page was successfully downloaded into '${outputDir}'`);
           process.exit(0);
