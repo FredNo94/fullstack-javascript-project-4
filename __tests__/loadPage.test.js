@@ -29,7 +29,7 @@ describe('Check downloadPage', () => {
   });
 
   afterAll(async () => {
-    // await fsp.rm(outputDir, { recursive: true, force: true });
+    await fsp.rm(outputDir, { recursive: true, force: true });
     jest.restoreAllMocks();
   });
 
