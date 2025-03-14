@@ -13,7 +13,7 @@ function downloadPage(url, outputDir = process.cwd()) {
   log(`Run load for URL: ${url}`);
   const baseUrl = new URL(url).origin;
   const newOutputDir = generatePath(url, outputDir, 'dir');
-  const outputFilePath = generatePath(url, newOutputDir, 'html');
+  const outputFilePath = generatePath(url, outputDir, 'html');
   let html;
 
   return fsp.access(outputDir)

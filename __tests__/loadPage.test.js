@@ -14,7 +14,7 @@ const fixturesPath = path.join(__dirname, '..', '__fixtures__');
 const expectedDir = path.join(outputDir, 'ru-hexlet-io-courses_files');
 
 const url = 'https://ru.hexlet.io/courses';
-const filePath = path.join(outputDir, 'ru-hexlet-io-courses_files', 'ru-hexlet-io-courses.html');
+const filePath = path.join(outputDir, 'ru-hexlet-io-courses.html');
 const htmlContent = '<html><body>Test</body></html>';
 
 describe('Check downloadPage', () => {
@@ -93,7 +93,7 @@ describe('Check downloadPage', () => {
 
     await downloadPage(url, outputDir);
 
-    const savedHtml = await fsp.readFile(path.join(expectedDir, 'ru-hexlet-io-courses.html'), 'utf-8');
+    const savedHtml = await fsp.readFile(path.join(outputDir, 'ru-hexlet-io-courses.html'), 'utf-8');
     expect(savedHtml.trim()).toBe(expectedHtml.trim());
 
     const imagePath = path.join(expectedDir, 'ru-hexlet-io-assets-professions-nodejs.png');
