@@ -15,6 +15,8 @@ function generateFilePath(url, outputDir, type) {
       return path.join(outputDir, `${basename}.html`);
     case 'png':
       return path.join(outputDir, `${basename}.png`);
+    case 'jpg':
+      return path.join(outputDir, `${basename}.jpg`);
     case 'css':
       return path.join(outputDir, `${basename}.css`);
     case 'js':
