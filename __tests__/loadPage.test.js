@@ -3,7 +3,7 @@ import fsp from 'fs/promises';
 import nock from 'nock';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { jest } from '@jest/globals';
+import { beforeAll, jest } from '@jest/globals';
 import generateFilePath from '../src/utils/generatePath.js';
 import downloadPage from '../src/index.js';
 
@@ -18,6 +18,10 @@ const filePath = path.join(outputDir, 'ru-hexlet-io-courses_files', 'ru-hexlet-i
 const htmlContent = '<html><body>Test</body></html>';
 
 describe('Check downloadPage', () => {
+  beforeAll(async () => {
+    await fsp.rm(outputDir, { recursive: true, force: true });
+  });
+
   beforeEach(async () => {
     await fsp.mkdir(expectedDir, { recursive: true });
     jest.spyOn(process, 'exit').mockImplementation(() => {});
@@ -25,7 +29,7 @@ describe('Check downloadPage', () => {
   });
 
   afterAll(async () => {
-    await fsp.rm(outputDir, { recursive: true, force: true });
+    // await fsp.rm(outputDir, { recursive: true, force: true });
     jest.restoreAllMocks();
   });
 
