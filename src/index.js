@@ -24,16 +24,8 @@ function downloadPage(url, outputDir = process.cwd()) {
     .then(() => axios.get(url, { responseType: 'arraybuffer' }))
     .then((response) => {
       log('HTML-page loaded');
-      if (response.status >= 400) {
-        throw new Error(`Network error: ${url}: ${response.status} ${response.statusText}`);
-      }
       html = response.data;
-      return fsp.mkdir(newOutputDir, { recursive: true })
-        .then(() => fsp.access(newOutputDir))
-        .catch((error) => {
-          log(`File system error: ${error.message}`);
-          throw new Error(`File system error: ${error.message}`);
-        });
+      return fsp.mkdir(newOutputDir, { recursive: true });
     })
     .then(() => {
       log(`Directory created: ${newOutputDir}`);
@@ -55,17 +47,7 @@ function downloadPage(url, outputDir = process.cwd()) {
         convertedResources.map((res) => ({
           title: `${res.absolutPathInHTML}`,
           task: () => axios.get(res.absolutPathInHTML, { responseType: 'arraybuffer' })
-            .then((response) => {
-              if (response.status >= 400) {
-                throw new Error(`Failed to download resource: ${res.absolutPathInHTML}: ${response.status}`);
-              }
-              log(`Saving resource: ${res.filePathForSave}`);
-              return fsp.writeFile(res.filePathForSave, response.data);
-            })
-            .catch((error) => {
-              log(`Error downloading resource: ${res.absolutPathInHTML}: ${error.message}`);
-              throw error;
-            }),
+            .then((response) => fsp.writeFile(res.filePathForSave, response.data)),
         })),
         { concurrent: true, exitOnError: false },
       );
@@ -87,27 +69,12 @@ function downloadPage(url, outputDir = process.cwd()) {
       });
 
       const updatedHtml = $.html({ decodeEntities: false });
-      console.log('Saving HTML to:', outputFilePath);
-      console.log('Output directory:', newOutputDir);
-
-      return fsp.writeFile(outputFilePath, updatedHtml);
-    })
-    .then(() => {
-      log(`Page was successfully downloaded into: '${newOutputDir}'`);
-      return newOutputDir;
+      return fsp.writeFile(outputFilePath, updatedHtml).then(() => newOutputDir);
     })
     .catch((error) => {
       log(`Error: ${error.message}`);
-      if (error.response || error.request) {
-        log(`Network error: ${error.message}`);
-        throw new Error(`Network error: ${url}: ${error.message}`);
-      } else if (error.code === 'EACCES' || error.code === 'ENOENT') {
-        log(`File system error: ${error.message}`);
-        throw new Error(`File system error: ${error.message}`);
-      } else {
-        log(`Unexpected error: ${error.message}`);
-        throw new Error(`Unexpected error: ${error.message}`);
-      }
+      console.error(`Error: ${error.message}`);
+      throw error;
     });
 }
 

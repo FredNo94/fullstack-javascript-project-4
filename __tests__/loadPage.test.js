@@ -117,7 +117,7 @@ describe('Check downloadPage', () => {
       .reply(404, 'Not Found');
 
     await expect(downloadPage('https://ru.hexlet.io/coursesr', outputDir))
-      .rejects.toThrow('Network error: https://ru.hexlet.io/coursesr: Request failed with status code 404');
+      .rejects.toThrow('Request failed with status code 404');
   });
 });
 
